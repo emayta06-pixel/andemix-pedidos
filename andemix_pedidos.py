@@ -433,14 +433,28 @@ def mostrar_app():
 
             # Exportar Excel (disponible para todos)
             if st.button("📊 Exportar a Excel", type="secondary"):
+                import importlib
                 output = io.BytesIO()
-                with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                    df_mostrar.to_excel(writer, sheet_name='Pedidos', index=False)
+                if importlib.util.find_spec("openpyxl") is not None:
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                        df_mostrar.to_excel(writer, sheet_name='Pedidos', index=False)
+                    file_name = f"Andemix_Pedidos_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+                    mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                elif importlib.util.find_spec("xlsxwriter") is not None:
+                    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                        df_mostrar.to_excel(writer, sheet_name='Pedidos', index=False)
+                    file_name = f"Andemix_Pedidos_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+                    mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                else:
+                    output.write(df_mostrar.to_csv(index=False).encode('utf-8-sig'))
+                    file_name = f"Andemix_Pedidos_{datetime.now().strftime('%Y%m%d_%H%M')}.csv"
+                    mime = "text/csv"
+                    st.warning("⚠️ openpyxl no instalado. Descargando como CSV. Agrega openpyxl a requirements.txt")
                 st.download_button(
-                    label="💾 Descargar Excel",
+                    label="💾 Descargar archivo",
                     data=output.getvalue(),
-                    file_name=f"Andemix_Pedidos_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    file_name=file_name,
+                    mime=mime
                 )
         else:
             st.info("No hay pedidos aún.")
