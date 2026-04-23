@@ -259,7 +259,7 @@ def mostrar_login():
         with st.expander("ℹ️ Información de acceso"):
             st.caption("Administrador: edwin.mayta / admin1234")
             st.caption("Vendedoras: tu.nombre / tunombre123")
-            st.caption("Ejemplo: batelina.torpoco / batelinatorporco123")
+            st.caption("Ejemplo: betelina.torpoco / betelinatorporco123")
 
 # ====================== INTERFAZ PRINCIPAL ======================
 def mostrar_app():
