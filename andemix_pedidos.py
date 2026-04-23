@@ -217,6 +217,51 @@ def actualizar_estado(pedido_id, nuevo_estado):
         conn.execute("UPDATE pedidos SET estado = ? WHERE id = ?", (nuevo_estado, pedido_id))
         conn.commit()
 
+def cargar_detalle_pedidos(vendedor_id=None):
+    """Carga el detalle línea por línea de todos los pedidos."""
+    with get_db() as conn:
+        if vendedor_id:
+            return pd.read_sql("""
+                SELECT 
+                    p.id as pedido_id,
+                    p.fecha,
+                    v.nombre as vendedor,
+                    p.cliente,
+                    p.estado,
+                    p.observaciones,
+                    pr.nombre as producto,
+                    pd.cantidad,
+                    pd.precio_unitario,
+                    pd.subtotal,
+                    p.total as total_pedido
+                FROM pedidos p
+                LEFT JOIN vendedores v ON p.vendedor_id = v.id
+                LEFT JOIN pedido_detalle pd ON p.id = pd.pedido_id
+                LEFT JOIN productos pr ON pd.producto_id = pr.id
+                WHERE p.vendedor_id = ?
+                ORDER BY p.id DESC, pr.nombre
+            """, conn, params=(vendedor_id,))
+        else:
+            return pd.read_sql("""
+                SELECT 
+                    p.id as pedido_id,
+                    p.fecha,
+                    v.nombre as vendedor,
+                    p.cliente,
+                    p.estado,
+                    p.observaciones,
+                    pr.nombre as producto,
+                    pd.cantidad,
+                    pd.precio_unitario,
+                    pd.subtotal,
+                    p.total as total_pedido
+                FROM pedidos p
+                LEFT JOIN vendedores v ON p.vendedor_id = v.id
+                LEFT JOIN pedido_detalle pd ON p.id = pd.pedido_id
+                LEFT JOIN productos pr ON pd.producto_id = pr.id
+                ORDER BY p.id DESC, pr.nombre
+            """, conn)
+
 # ====================== PANTALLA LOGIN ======================
 def mostrar_login():
     logo_path = "Logo_Andemix.jpg"
@@ -431,25 +476,37 @@ def mostrar_app():
                     st.success("Estado actualizado")
                     st.rerun()
 
-            # Exportar Excel (disponible para todos)
+            # Exportar Excel con detalle (disponible para todos)
             if st.button("📊 Exportar a Excel", type="secondary"):
                 import importlib
+                # Cargar resumen y detalle
+                vid_export = st.session_state.vendedor_id if st.session_state.rol != 'admin' else None
+                df_resumen = cargar_pedidos(vendedor_id=vid_export)
+                df_detalle = cargar_detalle_pedidos(vendedor_id=vid_export)
+                # Aplicar mismo filtro de estado
+                if filtro != "Todos":
+                    df_resumen = df_resumen[df_resumen['estado'] == filtro]
+                    df_detalle = df_detalle[df_detalle['estado'] == filtro]
+
                 output = io.BytesIO()
                 if importlib.util.find_spec("openpyxl") is not None:
-                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                        df_mostrar.to_excel(writer, sheet_name='Pedidos', index=False)
-                    file_name = f"Andemix_Pedidos_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
-                    mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    engine = 'openpyxl'
                 elif importlib.util.find_spec("xlsxwriter") is not None:
-                    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                        df_mostrar.to_excel(writer, sheet_name='Pedidos', index=False)
+                    engine = 'xlsxwriter'
+                else:
+                    engine = None
+
+                if engine:
+                    with pd.ExcelWriter(output, engine=engine) as writer:
+                        df_resumen.to_excel(writer, sheet_name='Resumen Pedidos', index=False)
+                        df_detalle.to_excel(writer, sheet_name='Detalle Pedidos', index=False)
                     file_name = f"Andemix_Pedidos_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
                     mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 else:
-                    output.write(df_mostrar.to_csv(index=False).encode('utf-8-sig'))
+                    output.write(df_detalle.to_csv(index=False).encode('utf-8-sig'))
                     file_name = f"Andemix_Pedidos_{datetime.now().strftime('%Y%m%d_%H%M')}.csv"
                     mime = "text/csv"
-                    st.warning("⚠️ openpyxl no instalado. Descargando como CSV. Agrega openpyxl a requirements.txt")
+                    st.warning("⚠️ openpyxl no instalado. Descargando como CSV.")
                 st.download_button(
                     label="💾 Descargar archivo",
                     data=output.getvalue(),
