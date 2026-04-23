@@ -79,7 +79,7 @@ with get_db() as conn:
     ''')
     
     # Vendedores
-    vendedores_list = ['Batelina Torpoco', 'Maria Pajuelo', 'Flor Pajuelo', 'Jenny Mayta', 
+    vendedores_list = ['Betelina Torpoco', 'Maria Pajuelo', 'Flor Pajuelo', 'Jenny Mayta', 
                        'Hayme Rivera', 'Marcela Torpoco', 'Michel Castillo', 'Rosmery',
                        'Hector', 'Ivan Huanuco', 'Mirtha Tinoco']
     for v in vendedores_list:
